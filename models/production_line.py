@@ -4,6 +4,7 @@ from database import db
 class ProductionLine(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50))
+    number_of_operators = db.Column(db.Integer, default=0)
     project_id = db.Column(db.Integer, db.ForeignKey('project.id'))
 
     def __init__(self, name):
