@@ -1,6 +1,7 @@
 from database import db
 from models.project import Project
 
+
 class HarnessModel(db.Model):
     __tablename__ = 'harness'
     id = db.Column(db.Integer, primary_key=True)

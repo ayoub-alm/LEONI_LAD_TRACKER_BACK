@@ -5,7 +5,11 @@ import jwt
 from database import db
 from models.harness import HarnessModel
 from services.authentication import Authentication
+from services.field_service import FieldService
 from services.harness_service import HarnessService
+from services.packaging_process_service import PackagingProcessService
+from services.packaging_step_service import PackagingStepService
+from services.post_service import PostService
 from services.prod_harness_service import ProdHarnessService
 from services.production_job_service import ProductionJobService
 from services.project import ProjectService
@@ -21,11 +25,8 @@ db.init_app(app)
 CORS(app)
 
 # Create database tables
-try:
-    with app.app_context():
-        db.create_all()
-except Exception as e:
-    print("Error creating tables:", e)
+with app.app_context():
+    db.create_all()
 
 
 def token_required(roles):
@@ -308,7 +309,7 @@ def create_production_job():
     quantity = production_job_data.get('quantity')
     production_line_id = production_job_data.get('production_line_id')
     # project_id = production_job_data.get('project_id')
-    production_job = ProductionJobService.create(1, harness_id, quantity, 0)
+    production_job = ProductionJobService.create(production_line_id, harness_id, quantity, 0)
     if production_job:
         return jsonify(production_job.to_dict()), 200
     else:
@@ -352,6 +353,181 @@ def delete_production_job(production_job_id):
         return jsonify({'error': 'Production job not found'}), 404
 
 
+# Routes for FieldService
+@app.route('/fields', methods=['POST'])
+def create_field():
+    data = request.json
+    field = FieldService.create_field(data['name'], data['pre_fix'])
+    return jsonify(field.to_dict()), 201
+
+
+@app.route('/fields/<int:field_id>', methods=['GET'])
+def get_field(field_id):
+    field = FieldService.get_field_by_id(field_id)
+    if field:
+        return jsonify(field.to_dict()), 200
+    else:
+        return jsonify({'error': 'Field not found'}), 404
+
+
+@app.route('/fields/<int:field_id>', methods=['PUT'])
+def update_field(field_id):
+    data = request.json
+    field = FieldService.update_field(field_id, data.get('name'), data.get('pre_fix'))
+    if field:
+        return jsonify(field.to_dict()), 200
+    else:
+        return jsonify({'error': 'Field not found'}), 404
+
+
+@app.route('/fields/<int:field_id>', methods=['DELETE'])
+def delete_field(field_id):
+    field = FieldService.delete_field(field_id)
+    if field:
+        return jsonify(field.to_dict()), 200
+    else:
+        return jsonify({'error': 'Field not found'}), 404
+
+
+@app.route('/fields', methods=['GET'])
+def get_all_fields():
+    fields = FieldService.get_all_fields()
+    return jsonify([field.to_dict() for field in fields]), 200
+
+
+# Routes for PackagingStepService
+@app.route('/steps', methods=['POST'])
+def create_packaging_step():
+    data = request.json
+    step = PackagingStepService.create_packaging_step(data['field'], data['status'], data['description'],
+                                                      data['packaging_process_step_id'], data['order'])
+    return jsonify(step.to_dict()), 201
+
+
+@app.route('/steps/<int:step_id>', methods=['GET'])
+def get_packaging_step(step_id):
+    step = PackagingStepService.get_step_by_id(step_id)
+    if step:
+        return jsonify(step.to_dict()), 200
+    else:
+        return jsonify({'error': 'Step not found'}), 404
+
+
+@app.route('/steps/<int:step_id>', methods=['PUT'])
+def update_packaging_step(step_id):
+    data = request.json
+    step = PackagingStepService.update_packaging_step(step_id, data.get('field'), data.get('status'),
+                                                      data.get('description'), data.get('order'))
+    if step:
+        return jsonify(step.to_dict()), 200
+    else:
+        return jsonify({'error': 'Step not found'}), 404
+
+
+@app.route('/steps/<int:step_id>', methods=['DELETE'])
+def delete_packaging_step(step_id):
+    step = PackagingStepService.delete_packaging_step(step_id)
+    if step:
+        return jsonify(step.to_dict()), 200
+    else:
+        return jsonify({'error': 'Step not found'}), 404
+
+
+@app.route('/steps', methods=['GET'])
+def get_all_steps():
+    steps = PackagingStepService.get_all_steps()
+    return jsonify([step.to_dict() for step in steps]), 200
+
+
+# Routes for PostService
+@app.route('/posts', methods=['POST'])
+def create_post():
+    data = request.json
+    post = PostService.create_post(data['name'])
+    return jsonify(post.to_dict()), 201
+
+
+@app.route('/posts/<int:post_id>', methods=['GET'])
+def get_post(post_id):
+    post = PostService.get_post_by_id(post_id)
+    if post:
+        return jsonify(post.to_dict()), 200
+    else:
+        return jsonify({'error': 'Post not found'}), 404
+
+
+@app.route('/posts/<int:post_id>', methods=['PUT'])
+def update_post(post_id):
+    data = request.json
+    post = PostService.update_post(post_id, data.get('name'))
+    if post:
+        return jsonify(post.to_dict()), 200
+    else:
+        return jsonify({'error': 'Post not found'}), 404
+
+
+@app.route('/posts/<int:post_id>', methods=['DELETE'])
+def delete_post(post_id):
+    post = PostService.delete_post(post_id)
+    if post:
+        return jsonify(post.to_dict()), 200
+    else:
+        return jsonify({'error': 'Post not found'}), 404
+
+
+@app.route('/posts', methods=['GET'])
+def get_all_posts():
+    posts = PostService.get_all_posts()
+    return jsonify([post.to_dict() for post in posts]), 200
+
+
+# Create a new packaging process
+@app.route('/processes', methods=['POST'])
+def create_process():
+    data = request.json
+    process = PackagingProcessService.create_process(data['family_id'], data['status'], data['name'])
+    return jsonify(process.to_dict()), 201
+
+
+# Retrieve a packaging process by ID
+@app.route('/processes/<int:process_id>', methods=['GET'])
+def get_process(process_id):
+    process = PackagingProcessService.get_process_by_id(process_id)
+    if process:
+        return jsonify(process.to_dict()), 200
+    else:
+        return jsonify({'error': 'Process not found'}), 404
+
+
+# Update a packaging process by ID
+@app.route('/processes/<int:process_id>', methods=['PUT'])
+def update_process(process_id):
+    data = request.json
+    process = PackagingProcessService.update_process(process_id, data.get('family_id'), data.get('status'),
+                                                     data.get('name'))
+    if process:
+        return jsonify(process.to_dict()), 200
+    else:
+        return jsonify({'error': 'Process not found'}), 404
+
+
+# Delete a packaging process by ID
+@app.route('/processes/<int:process_id>', methods=['DELETE'])
+def delete_process(process_id):
+    process = PackagingProcessService.delete_process(process_id)
+    if process:
+        return jsonify(process.to_dict()), 200
+    else:
+        return jsonify({'error': 'Process not found'}), 404
+
+
+# Retrieve all packaging processes
+@app.route('/processes', methods=['GET'])
+def get_all_processes():
+    processes = PackagingProcessService.get_all_processes()
+    return jsonify([process.to_dict() for process in processes]), 200
+
+
 # Authentication routes
 @app.route('/login', methods=['POST'])
 def login():
@@ -366,5 +542,5 @@ def login():
     return auth_service.login(email, password)
 
 
-if __name__ == '__main__':
-    app.run(debug=True)
+if __name__ == "__main__":
+    app.run()

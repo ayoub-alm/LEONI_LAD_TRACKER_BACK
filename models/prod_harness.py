@@ -12,6 +12,8 @@ class ProdHarness(db.Model):
     range_time = db.Column(db.Float, nullable=True)
     production_job_id = db.Column(db.Integer, db.ForeignKey('production_job.id'))
     production_job = db.relationship('ProductionJob', backref='prod_harness', lazy=True)
+    status = db.Column(db.Integer,  default=0)
+    # packaging_box_id = db.Column(db.Integer,  db.ForeignKey('production_job.id'), nullable=True)
 
     def __init__(self, uuid, box_number=None, range_time=None, production_job_id=None):
         super().__init__()
