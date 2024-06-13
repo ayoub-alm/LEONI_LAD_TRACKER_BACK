@@ -7,6 +7,7 @@ from models.harness import HarnessModel
 from services.authentication import Authentication
 from services.field_service import FieldService
 from services.harness_service import HarnessService
+from services.packaging_box_service import PackagingBoxService
 from services.packaging_process_service import PackagingProcessService
 from services.packaging_step_service import PackagingStepService
 from services.post_service import PostService
@@ -144,6 +145,19 @@ def get_all_harness():
         return jsonify({'error': 'Harness not found'}), 404
 
 
+@app.route('/harness/family', methods=['GET'])
+def get_all_family_harness():
+    harnesses = HarnessService.get_families()
+    if len(harnesses):
+        # Convert results to a list of dictionaries
+        formatted_results = [{'id': id, 'family': family, 'count': count} for id, family, count in harnesses]
+        # Return the formatted results as JSON
+        return jsonify(formatted_results), 200
+    else:
+        # Return a JSON response indicating that the harness was not found
+        return jsonify({'error': 'Harness family not found'}), 404
+
+
 @app.route('/harness/project/<int:project_id>', methods=['GET'])
 def get_all_harness_by_project_id(project_id):
     harness = HarnessModel()
@@ -171,6 +185,17 @@ def get_all_harness_by_family(family):
 @app.route('/harness/<int:harness_id>', methods=['GET'])
 def get_harness(harness_id):
     harness = HarnessService.get_by_id(harness_id)
+    if harness:
+        # Return a JSON response with the harness details
+        return jsonify(harness.to_dict()), 200
+    else:
+        # Return a JSON response indicating that the harness was not found
+        return jsonify({'error': 'Harness not found'}), 404
+
+
+@app.route('/harness/ref/<int:harness_ref>', methods=['GET'])
+def get_harness_by_ref(harness_ref):
+    harness = HarnessService.get_by_ref(harness_ref)
     if harness:
         # Return a JSON response with the harness details
         return jsonify(harness.to_dict()), 200
@@ -269,6 +294,15 @@ def get_all_prod_harness():
     prod_harnesses = ProdHarnessService.get_all()
     if prod_harnesses:
         return jsonify([prod_harness.to_dict() for prod_harness in prod_harnesses]), 200
+    else:
+        return jsonify({'error': 'Prod harness not found'}), 404
+
+
+@app.route('/prod-harness/uuid/<string:uuid>', methods=['GET'])
+def get_prod_harness_by_ref(uuid):
+    prod_harness = ProdHarnessService.get_by_uuid(uuid)
+    if prod_harness:
+        return jsonify(prod_harness.to_dict()), 200
     else:
         return jsonify({'error': 'Prod harness not found'}), 404
 
@@ -395,12 +429,18 @@ def get_all_fields():
     return jsonify([field.to_dict() for field in fields]), 200
 
 
-# Routes for PackagingStepService
 @app.route('/steps', methods=['POST'])
 def create_packaging_step():
     data = request.json
-    step = PackagingStepService.create_packaging_step(data['field'], data['status'], data['description'],
-                                                      data['packaging_process_step_id'], data['order'])
+    step = PackagingStepService.create_packaging_step(
+        pre_fix=data['pre_fix'],
+        field=data['field_id'],
+        status=data['status'],
+        description=data['description'],
+        packaging_process_id=data['packaging_process_id'],
+        img=data['img'],
+        order=data['order']
+    )
     return jsonify(step.to_dict()), 201
 
 
@@ -416,8 +456,16 @@ def get_packaging_step(step_id):
 @app.route('/steps/<int:step_id>', methods=['PUT'])
 def update_packaging_step(step_id):
     data = request.json
-    step = PackagingStepService.update_packaging_step(step_id, data.get('field'), data.get('status'),
-                                                      data.get('description'), data.get('order'))
+    step = PackagingStepService.update_packaging_step(
+        step_id,
+        pre_fix=data.get('pre_fix'),
+        field=data.get('field_id'),
+        status=data.get('status'),
+        description=data.get('description'),
+        packaging_process_id=data.get('packaging_process_id'),
+        img=data.get('img'),
+        order=data.get('order')
+    )
     if step:
         return jsonify(step.to_dict()), 200
     else:
@@ -437,6 +485,13 @@ def delete_packaging_step(step_id):
 def get_all_steps():
     steps = PackagingStepService.get_all_steps()
     return jsonify([step.to_dict() for step in steps]), 200
+
+
+@app.route('/steps/bulk', methods=['POST'])
+def create_bulk_packaging_steps():
+    data = request.json
+    steps = PackagingStepService.create_bulk_packaging_steps(data)
+    return jsonify([step.to_dict() for step in steps]), 201
 
 
 # Routes for PostService
@@ -482,15 +537,15 @@ def get_all_posts():
 
 
 # Create a new packaging process
-@app.route('/processes', methods=['POST'])
+@app.route('/packaging-process', methods=['POST'])
 def create_process():
     data = request.json
-    process = PackagingProcessService.create_process(data['family_id'], data['status'], data['name'])
+    process = PackagingProcessService.create_process(data['family'], data['status'], data['name'])
     return jsonify(process.to_dict()), 201
 
 
 # Retrieve a packaging process by ID
-@app.route('/processes/<int:process_id>', methods=['GET'])
+@app.route('/packaging-process/<int:process_id>', methods=['GET'])
 def get_process(process_id):
     process = PackagingProcessService.get_process_by_id(process_id)
     if process:
@@ -500,7 +555,7 @@ def get_process(process_id):
 
 
 # Update a packaging process by ID
-@app.route('/processes/<int:process_id>', methods=['PUT'])
+@app.route('/packaging-process/<int:process_id>', methods=['PUT'])
 def update_process(process_id):
     data = request.json
     process = PackagingProcessService.update_process(process_id, data.get('family_id'), data.get('status'),
@@ -512,7 +567,7 @@ def update_process(process_id):
 
 
 # Delete a packaging process by ID
-@app.route('/processes/<int:process_id>', methods=['DELETE'])
+@app.route('/packaging-process/<int:process_id>', methods=['DELETE'])
 def delete_process(process_id):
     process = PackagingProcessService.delete_process(process_id)
     if process:
@@ -521,11 +576,49 @@ def delete_process(process_id):
         return jsonify({'error': 'Process not found'}), 404
 
 
-# Retrieve all packaging processes
-@app.route('/processes', methods=['GET'])
+#   packaging Box
+@app.route('/packaging-process', methods=['GET'])
 def get_all_processes():
     processes = PackagingProcessService.get_all_processes()
     return jsonify([process.to_dict() for process in processes]), 200
+
+
+@app.route('/packaging_boxes', methods=['GET'])
+def get_packaging_boxes():
+    packaging_boxes = PackagingBoxService.get_all_packaging_boxes()
+    return jsonify([box.to_dict() for box in packaging_boxes])
+
+
+@app.route('/packaging_box/<int:box_id>', methods=['GET'])
+def get_packaging_box(box_id):
+    packaging_box = PackagingBoxService.get_packaging_box_by_id(box_id)
+    if packaging_box:
+        return jsonify(packaging_box.to_dict())
+    return jsonify({'message': 'Packaging box not found'}), 404
+
+
+@app.route('/packaging_box', methods=['POST'])
+def create_packaging_box():
+    data = request.json
+    packaging_box = PackagingBoxService.create_packaging_box(**data)
+    return jsonify(packaging_box.to_dict()), 201
+
+
+@app.route('/packaging_box/<int:box_id>', methods=['PUT'])
+def update_packaging_box(box_id):
+    data = request.json
+    packaging_box = PackagingBoxService.update_packaging_box(box_id, **data)
+    if packaging_box:
+        return jsonify(packaging_box.to_dict())
+    return jsonify({'message': 'Packaging box not found'}), 404
+
+
+@app.route('/packaging_box/<int:box_id>', methods=['DELETE'])
+def delete_packaging_box(box_id):
+    packaging_box = PackagingBoxService.delete_packaging_box(box_id)
+    if packaging_box:
+        return jsonify(packaging_box.to_dict())
+    return jsonify({'message': 'Packaging box not found'}), 404
 
 
 # Authentication routes
@@ -543,4 +636,4 @@ def login():
 
 
 if __name__ == "__main__":
-    app.run()
+    app.run(host='0.0.0.0', port=5000)

@@ -4,6 +4,7 @@ from database import db
 from models.prod_harness import ProdHarness
 from services.production_job_service import ProductionJobService
 
+
 class ProdHarnessService:
     @staticmethod
     def create(uuid, box_number, range_time, production_job_id):
@@ -20,7 +21,7 @@ class ProdHarnessService:
         if delivered_quantity == production_job.demanded_quantity:
             status = 1
             ProductionJobService.update(production_job_id, None, None, None, None,
-                                        production_job.delivered_quantity + 1 , status)
+                                        production_job.delivered_quantity + 1, status)
 
         db.session.add(prod_harness)
         db.session.commit()
@@ -69,4 +70,9 @@ class ProdHarnessService:
     @staticmethod
     def get_all():
         harnesses = ProdHarness.query.all()
+        return harnesses
+
+    @staticmethod
+    def get_by_uuid(uuid):
+        harnesses = ProdHarness.query.filter_by(uuid=uuid).first()
         return harnesses

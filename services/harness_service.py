@@ -1,3 +1,5 @@
+from sqlalchemy import func
+
 from database import db
 from models.harness import HarnessModel
 
@@ -63,4 +65,10 @@ class HarnessService:
     def get_all():
         return HarnessModel.query.all()
 
+    @staticmethod
+    def get_families():
+        return db.session.query(HarnessModel.id, HarnessModel.family, func.count()).group_by(HarnessModel.family).all()
 
+    @staticmethod
+    def get_by_ref(ref):
+        return HarnessModel.query.filter_by(ref=ref).all()

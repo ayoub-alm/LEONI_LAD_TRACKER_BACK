@@ -4,8 +4,8 @@ from models.packaging_process import PackagingProcess
 
 class PackagingProcessService:
     @staticmethod
-    def create_process(family_id, status, name):
-        process = PackagingProcess(family_id=family_id, status=status, name=name)
+    def create_process(family, status, name):
+        process = PackagingProcess(family=family, status=status, name=name)
         db.session.add(process)
         db.session.commit()
         return process

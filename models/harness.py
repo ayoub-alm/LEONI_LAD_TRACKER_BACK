@@ -1,8 +1,9 @@
 from database import db
+from models.base_model import BaseModel
 from models.project import Project
 
 
-class HarnessModel(db.Model):
+class HarnessModel(BaseModel, db.Model):
     __tablename__ = 'harness'
     id = db.Column(db.Integer, primary_key=True)
     ref = db.Column(db.String(50))

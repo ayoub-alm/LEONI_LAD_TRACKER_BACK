@@ -1,6 +1,8 @@
 from database import db
+from models.base_model import BaseModel
 
-class Post(db.Model):
+
+class Post(BaseModel, db.Model):
     __tablename__ = 'post'
 
     id = db.Column(db.Integer, primary_key=True)

@@ -1,5 +1,7 @@
 import random
 
+from sqlalchemy import and_
+
 from database import db
 from models.production_job import ProductionJob
 
@@ -10,9 +12,14 @@ class ProductionJobService:
     def create(line_id, harness_id, demanded_quantity=0, delivered_quantity=0):
         # generate a unique number
         ref = ''.join([str(random.randint(0, 9)) for _ in range(8)])
-
-        production_job = ProductionJob(ref, line_id, harness_id, demanded_quantity,
-                                       delivered_quantity, 0)
+        last_created_job_order = (ProductionJob.query.filter_by(production_line_id=line_id, status=0)
+                                  .order_by(ProductionJob.order.desc()).first())
+        if last_created_job_order is None:
+            production_job = ProductionJob(ref, line_id, harness_id, demanded_quantity,
+                                           delivered_quantity, 0, 1)
+        else:
+            production_job = ProductionJob(ref, line_id, harness_id, demanded_quantity,
+                                           delivered_quantity, 0, last_created_job_order.order + 1)
         db.session.add(production_job)
         db.session.commit()
         return production_job
@@ -73,3 +80,43 @@ class ProductionJobService:
     @staticmethod
     def get_all():
         return ProductionJob.query.all()
+
+    @staticmethod
+    def re_order(production_line_id, job_id, desc_or_asd):
+        production_jobs = ProductionJob.query.filter_by(production_line_id=production_line_id, status=0).all()
+        production_jobs.sort()
+
+
+class ProductionJobManager:
+    @staticmethod
+    def re_order(job_id, desc_or_asd):
+        selected_production_job = ProductionJob.query.filter_by(id=job_id, status=0).first()
+        # production_jobs = ProductionJob.query.filter_by(production_line=job_id, status=0).all()
+        if desc_or_asd.lower() == 'desc':
+            selected_production_job.order = selected_production_job.order - 1
+            production_jobs = ProductionJob.query.filter_by(
+                and_(
+                    ProductionJob.production_line_id == selected_production_job.production_line_id,
+                    ProductionJob.status == 0,
+                    ProductionJob.order < selected_production_job.order
+                )
+            ).all()
+            for selected_production_job in production_jobs:
+                selected_production_job.order = selected_production_job.order - 1
+        elif desc_or_asd.lower() == 'desc':
+            selected_production_job.order = selected_production_job.order + 1
+            production_jobs = ProductionJob.query.filter_by(
+                and_(
+                    ProductionJob.production_line_id == selected_production_job.production_line_id,
+                    ProductionJob.status == 0,
+                    ProductionJob.order > selected_production_job.order
+                )
+            ).all()
+            for selected_production_job in production_jobs:
+                selected_production_job.order = selected_production_job.order + 1
+        else:
+            raise ValueError("Invalid sorting order. Use 'asc' for ascending or 'desc' for descending.")
+        return production_jobs
+
+# Example usage
+# production_jobs = ProductionJobManager.re_order(production_line_id, job_id, 'asc')

@@ -1,9 +1,10 @@
 from sqlalchemy.orm import relationship
 
 from database import db
+from models.base_model import BaseModel
 
 
-class Field(db.Model):
+class Field(BaseModel, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50))
     post_id = db.Column(db.Integer, db.ForeignKey('post.id'))

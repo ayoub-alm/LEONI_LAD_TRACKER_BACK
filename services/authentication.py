@@ -3,7 +3,7 @@ from typing import Any
 
 from flask import jsonify
 
-import app
+
 from models.user import User
 import jwt
 
