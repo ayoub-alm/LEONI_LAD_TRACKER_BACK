@@ -1,14 +1,14 @@
 from database import db
-from sqlalchemy.orm import relationship
 
 from models.base_model import BaseModel
 
 
-class Project( BaseModel, db.Model):
+class Project(BaseModel, db.Model):
+    __tablename__ = 'projects'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), unique=True)
     ref = db.Column(db.String(50), unique=True)
-    production_lines = relationship('ProductionLine', backref='project', lazy=True)
+    segments = db.relationship('Segment', back_populates='project')
 
     def __init__(self, name, ref):
         super().__init__()
@@ -20,5 +20,5 @@ class Project( BaseModel, db.Model):
             'id': self.id,
             'name': self.name,
             'ref': self.ref,
-            'production_lines': [production_line.to_dict() for production_line in self.production_lines]
+            'segments': self.segments if self.segments else None
         }

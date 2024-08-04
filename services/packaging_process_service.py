@@ -4,8 +4,8 @@ from models.packaging_process import PackagingProcess
 
 class PackagingProcessService:
     @staticmethod
-    def create_process(family, status, name):
-        process = PackagingProcess(family=family, status=status, name=name)
+    def create_process(segmentId, status, name):
+        process = PackagingProcess(segment_id=segmentId, status=status, name=name)
         db.session.add(process)
         db.session.commit()
         return process
@@ -38,3 +38,7 @@ class PackagingProcessService:
     @staticmethod
     def get_all_processes():
         return PackagingProcess.query.all()
+
+    @staticmethod
+    def get_process_by_segment_id(segment_id):
+        return PackagingProcess.query.filter(PackagingProcess.segment_id == segment_id).first()

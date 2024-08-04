@@ -6,10 +6,11 @@ from database import db
 
 
 class ProductionJob(BaseModel, db.Model):
+    __tablename__ = 'production_jobs'
     id = db.Column(db.Integer, primary_key=True)
     ref = db.Column(db.String(50))
-    production_line_id = db.Column(db.Integer, db.ForeignKey('production_line.id'))
-    harness_id = db.Column(db.Integer, db.ForeignKey('harness.id'))
+    production_line_id = db.Column(db.Integer, db.ForeignKey('production_lines.id'))
+    harness_id = db.Column(db.Integer, db.ForeignKey('harnesses.id'))
     demanded_quantity = db.Column(db.Integer, default=0)
     delivered_quantity = db.Column(db.Integer, default=0)
     status = db.Column(db.Integer, default=0)

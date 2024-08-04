@@ -1,12 +1,17 @@
+import os
 from functools import wraps
 
 from flask import Flask, jsonify, request
 import jwt
 from database import db
 from models.harness import HarnessModel
+from router.global_dashboard import global_dashboard_bp
+from router.line_dashboard import line_dashboard_bp
 from services.authentication import Authentication
 from services.field_service import FieldService
+from services.group_service import GroupService
 from services.harness_service import HarnessService
+from services.package_service import PackagingTypeService
 from services.packaging_box_service import PackagingBoxService
 from services.packaging_process_service import PackagingProcessService
 from services.packaging_step_service import PackagingStepService
@@ -17,6 +22,8 @@ from services.project import ProjectService
 from services.production_line_service import ProductionLineService
 from flask_cors import CORS
 from models.production_job import ProductionJob
+from services.segment_service import SegmentService
+from services.user_service import UserService
 
 app = Flask(__name__)
 app.config.from_object('config')
@@ -24,10 +31,18 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:@localhost/leoni_t
 app.config.from_object('config')
 db.init_app(app)
 CORS(app)
-
+db.configure_mappers()
 # Create database tables
 with app.app_context():
     db.create_all()
+
+
+
+
+# Register the blueprint
+app.register_blueprint(line_dashboard_bp)
+# Register the global dashboard Lines
+app.register_blueprint(global_dashboard_bp)
 
 
 def token_required(roles):
@@ -114,129 +129,97 @@ def delete_production_line(production_line_id):
         return jsonify({'error': 'Production line not found'}), 404
 
 
-# Harness routes
+# Harness routes  ****************************
+
 @app.route('/harness', methods=['POST'])
 def create_harness():
-    data = request.json  # Assuming the request body contains JSON data
+    data = request.json
     ref = data.get('ref')
-    fase_iso = data.get('fase_iso')
-    family = data.get('family')
+    cpn = data.get('cpn')
+    fuse_box = data.get('fuse_box')
     range_time = data.get('range_time')
-    project_id = data.get('project_id')
+    package_type_id = data.get('package_type_id')
+    segment_id = data.get('segment_id')
 
-    harness = HarnessService.create(ref, fase_iso, family, range_time, project_id)
-
-    if harness:
-        # Return a JSON response indicating success
+    try:
+        harness = HarnessService.create(ref, cpn, fuse_box, range_time, package_type_id, segment_id)
         return jsonify({'message': 'Harness created successfully', 'harness_id': harness.id}), 201
-    else:
-        # Return a JSON response indicating failure
-        return jsonify({'error': 'Failed to create harness'}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
 
 
 @app.route('/harness', methods=['GET'])
 def get_all_harness():
     harnesses = HarnessService.get_all()
-    if len(harnesses):
-        # Return a JSON response with the harness details
-        return jsonify([harness.to_dict() for harness in harnesses]), 200
-    else:
-        # Return a JSON response indicating that the harness was not found
-        return jsonify({'error': 'Harness not found'}), 404
+    return jsonify([harness.to_dict() for harness in harnesses]), 200
 
 
 @app.route('/harness/family', methods=['GET'])
 def get_all_family_harness():
-    harnesses = HarnessService.get_families()
-    if len(harnesses):
-        # Convert results to a list of dictionaries
-        formatted_results = [{'id': id, 'family': family, 'count': count} for id, family, count in harnesses]
-        # Return the formatted results as JSON
-        return jsonify(formatted_results), 200
-    else:
-        # Return a JSON response indicating that the harness was not found
-        return jsonify({'error': 'Harness family not found'}), 404
+    families = HarnessService.get_families()
+    formatted_results = [{'family': family, 'count': count} for family, count in families]
+    return jsonify(formatted_results), 200
 
 
 @app.route('/harness/project/<int:project_id>', methods=['GET'])
 def get_all_harness_by_project_id(project_id):
-    harness = HarnessModel()
-    harnesses = harness.query.filter_by(project_id=project_id).all()
-    if len(harnesses):
-        # Return a JSON response with the harness details
-        return jsonify([harness.to_dict() for harness in harnesses]), 200
-    else:
-        # Return a JSON response indicating that the harness was not found
-        return jsonify({'error': 'Harness not found'}), 404
+    harnesses = HarnessModel.query.filter_by(project_id=project_id).all()
+    return jsonify([harness.to_dict() for harness in harnesses]), 200
 
 
 @app.route('/harness/family/<string:family>', methods=['GET'])
 def get_all_harness_by_family(family):
-    harness = HarnessModel()
-    harnesses = harness.query.filter_by(family=family).all()
-    if len(harnesses):
-        # Return a JSON response with the harness details
-        return jsonify([harness.to_dict() for harness in harnesses]), 200
-    else:
-        # Return a JSON response indicating that the harness was not found
-        return jsonify({'error': 'Harness not found'}), 404
+    harnesses = HarnessModel.query.filter_by(family=family).all()
+    return jsonify([harness.to_dict() for harness in harnesses]), 200
 
 
 @app.route('/harness/<int:harness_id>', methods=['GET'])
 def get_harness(harness_id):
     harness = HarnessService.get_by_id(harness_id)
     if harness:
-        # Return a JSON response with the harness details
         return jsonify(harness.to_dict()), 200
     else:
-        # Return a JSON response indicating that the harness was not found
         return jsonify({'error': 'Harness not found'}), 404
 
 
-@app.route('/harness/ref/<int:harness_ref>', methods=['GET'])
+@app.route('/harness/ref/<string:harness_ref>', methods=['GET'])
 def get_harness_by_ref(harness_ref):
-    harness = HarnessService.get_by_ref(harness_ref)
-    if harness:
-        # Return a JSON response with the harness details
-        return jsonify(harness.to_dict()), 200
-    else:
-        # Return a JSON response indicating that the harness was not found
-        return jsonify({'error': 'Harness not found'}), 404
+    harnesses = HarnessService.get_by_ref(harness_ref)
+    return jsonify([harness.to_dict() for harness in harnesses]), 200
 
 
 @app.route('/harness/<int:harness_id>', methods=['PUT'])
 def update_harness(harness_id):
     data = request.json
     ref = data.get('ref')
-    fase_iso = data.get('fase_iso')
-    family = data.get('family')
+    cpn = data.get('cpn')
+    fuse_box = data.get('fuse_box')
     range_time = data.get('range_time')
-    project_id = data.get('project_id')
+    package_type_id = data.get('package_type_id')
+    segment_id = data.get('segment_id')
 
-    # Update the harness with the provided data
-    updated_harness = HarnessService.update(harness_id, ref, fase_iso, family, range_time, project_id)
-
-    if updated_harness:
-        # Return a JSON response with the updated harness details
-        return jsonify(updated_harness.to_dict()), 200
-    else:
-        # Return a JSON response indicating that the harness was not found
-        return jsonify({'error': 'Harness not found'}), 404
+    try:
+        updated_harness = HarnessService.update(harness_id, ref, cpn, fuse_box, range_time, package_type_id, segment_id)
+        if updated_harness:
+            return jsonify(updated_harness.to_dict()), 200
+        else:
+            return jsonify({'error': 'Harness not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
 
 
 @app.route('/harness/<int:harness_id>', methods=['DELETE'])
 def delete_harness(harness_id):
-    # Delete the harness with the specified ID
-    success = HarnessService.delete(harness_id)
-    if success:
-        # Return a JSON response indicating success
-        return jsonify({'message': 'Harness deleted successfully'}), 200
-    else:
-        # Return a JSON response indicating that the harness was not found
-        return jsonify({'error': 'Harness not found'}), 404
+    try:
+        success = HarnessService.delete(harness_id)
+        if success:
+            return jsonify({'message': 'Harness deleted successfully'}), 200
+        else:
+            return jsonify({'error': 'Harness not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
 
 
-# Production harness routes
 @app.route('/prod-harness/<int:prod_harness_id>', methods=['GET'])
 def get_prod_harness(prod_harness_id):
     prod_harness = ProdHarnessService.get_by_id(prod_harness_id)
@@ -252,14 +235,14 @@ def create_production_harness():
     uuid = data.get('uuid')
     box_number = data.get('box_number')
     range_time = data.get('range_time')
-    production_job_id = data.get('productionJobId')
+    production_job_id = data.get('production_job_id')
+    status = data.get('status', 0)
+    packaging_box_id = data.get('packaging_box_id')
 
-    # if uuid is None or box_number is None or production_job_id is None:
-    #     return jsonify({'error': 'Missing data in request'}), 400
-
-    production_harness = ProdHarnessService.create(uuid, box_number, range_time, production_job_id)
+    production_harness = ProdHarnessService.create(uuid, box_number, range_time, production_job_id, status,
+                                                   packaging_box_id)
     if production_harness:
-        return jsonify({'success': True}), 200
+        return jsonify(production_harness.to_dict()), 201
     else:
         return jsonify({'error': 'Failed to create production harness'}), 400
 
@@ -270,9 +253,12 @@ def update_prod_harness(prod_harness_id):
     uuid = data.get('uuid')
     box_number = data.get('box_number')
     range_time = data.get('range_time')
-    harness_id = data.get('harness_id')
+    production_job_id = data.get('production_job_id')
+    status = data.get('status')
+    packaging_box_id = data.get('packaging_box_id')
 
-    updated_prod_harness = ProdHarnessService.update(prod_harness_id, uuid, box_number, range_time, harness_id)
+    updated_prod_harness = ProdHarnessService.update(prod_harness_id, uuid, box_number, range_time, production_job_id,
+                                                     status, packaging_box_id)
 
     if updated_prod_harness:
         return jsonify(updated_prod_harness.to_dict()), 200
@@ -292,10 +278,7 @@ def delete_prod_harness(prod_harness_id):
 @app.route('/prod-harness', methods=['GET'])
 def get_all_prod_harness():
     prod_harnesses = ProdHarnessService.get_all()
-    if prod_harnesses:
-        return jsonify([prod_harness.to_dict() for prod_harness in prod_harnesses]), 200
-    else:
-        return jsonify({'error': 'Prod harness not found'}), 404
+    return jsonify([prod_harness.to_dict() for prod_harness in prod_harnesses]), 200
 
 
 @app.route('/prod-harness/uuid/<string:uuid>', methods=['GET'])
@@ -540,7 +523,7 @@ def get_all_posts():
 @app.route('/packaging-process', methods=['POST'])
 def create_process():
     data = request.json
-    process = PackagingProcessService.create_process(data['family'], data['status'], data['name'])
+    process = PackagingProcessService.create_process(data['segmentId'], data['status'], data['name'])
     return jsonify(process.to_dict()), 201
 
 
@@ -583,6 +566,13 @@ def get_all_processes():
     return jsonify([process.to_dict() for process in processes]), 200
 
 
+@app.route('/packaging-process/segment/<int:segment_id>', methods=['GET'])
+def get_processes_by_segment_id(segment_id):
+    process = PackagingProcessService.get_process_by_segment_id(segment_id)
+    return jsonify(process.to_dict()), 200
+
+
+# packaging box routes
 @app.route('/packaging_boxes', methods=['GET'])
 def get_packaging_boxes():
     packaging_boxes = PackagingBoxService.get_all_packaging_boxes()
@@ -599,9 +589,27 @@ def get_packaging_box(box_id):
 
 @app.route('/packaging_box', methods=['POST'])
 def create_packaging_box():
-    data = request.json
-    packaging_box = PackagingBoxService.create_packaging_box(**data)
-    return jsonify(packaging_box.to_dict()), 201
+    try:
+        data = request.json
+
+        required_fields = ['line_id', 'to_be_delivered_quantity', 'delivered_quantity', 'harness_id', 'status',
+                           'created_by', 'barcode']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'error': f'Missing required field: {field}'}), 400
+
+        packaging_box = PackagingBoxService.create_packaging_box(
+            line_id=data['line_id'],
+            to_be_delivered_quantity=data['to_be_delivered_quantity'],
+            delivered_quantity=data['delivered_quantity'],
+            harness_id=data['harness_id'],
+            status=data['status'],
+            created_by=data['created_by'],
+            barcode=data['barcode']
+        )
+        return jsonify(packaging_box.to_dict()), 201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/packaging_box/<int:box_id>', methods=['PUT'])
@@ -621,19 +629,220 @@ def delete_packaging_box(box_id):
     return jsonify({'message': 'Packaging box not found'}), 404
 
 
+@app.route('/packaging_box/opening-package/<int:line_id>')
+def opening_package(line_id):
+    packaging_box = PackagingBoxService.get_opened_package(line_id)
+    if packaging_box:
+        return jsonify(packaging_box.to_dict())
+    return jsonify({'message': 'Packaging box not found'}), 404
+
+
 # Authentication routes
 @app.route('/login', methods=['POST'])
 def login():
     auth = request.json
-    email = auth.get('email')
+    matriculate = auth.get('matriculate')
     password = auth.get('password')
 
-    if email is None or password is None:
+    if matriculate is None or password is None:
         return jsonify({'error': 'Missing email or password'}), 400
 
     auth_service = Authentication()
-    return auth_service.login(email, password)
+    return auth_service.login(matriculate, password)
+
+
+# *************  user route
+@app.route('/users', methods=['POST'])
+def create_user():
+    data = request.get_json()
+    if not data or not 'username' in data or not 'password' in data or not 'role' in data or not 'matriculate' in data:
+        return jsonify({'message': 'Invalid input'}), 400
+    user = UserService.create_user(data['username'], data['password'], data['role'], data['matriculate'])
+    return jsonify(user.to_dict()), 201
+
+
+@app.route('/users/<int:user_id>', methods=['GET'])
+def get_user(user_id):
+    user = UserService.get_user_by_id(user_id)
+    if user:
+        return jsonify(user.to_dict())
+    return jsonify({'message': 'User not found'}), 404
+
+
+@app.route('/users', methods=['GET'])
+def get_all_users():
+    users = UserService.get_all_users()
+    return jsonify([user.to_dict() for user in users])
+
+
+@app.route('/users/<int:user_id>', methods=['PUT'])
+def update_user(user_id):
+    data = request.get_json()
+    if not data:
+        return jsonify({'message': 'Invalid input'}), 400
+    user = UserService.update_user(user_id, data.get('username'), data.get('password'), data.get('role'),
+                                   data.get('matriculate'))
+    if user:
+        return jsonify(user.to_dict())
+    return jsonify({'message': 'User not found'}), 404
+
+
+@app.route('/users/<int:user_id>', methods=['DELETE'])
+def delete_user(user_id):
+    user = UserService.delete_user(user_id)
+    if user:
+        return jsonify(user.to_dict())
+    return jsonify({'message': 'User not found'}), 404
+
+
+# package type ************************
+
+@app.route('/packaging_types', methods=['POST'])
+def create_packaging_type():
+    data = request.json
+    type = data.get('type')
+    size = data.get('size')
+    weight = data.get('weight')
+    new_packaging_type = PackagingTypeService.create_packaging_type(type, size, weight)
+    return jsonify(new_packaging_type.to_dict()), 201
+
+
+@app.route('/packaging_types/<int:packaging_type_id>', methods=['GET'])
+def get_packaging_type(packaging_type_id):
+    packaging_type = PackagingTypeService.get_packaging_type_by_id(packaging_type_id)
+    if packaging_type:
+        return jsonify(packaging_type.to_dict())
+    return jsonify({'message': 'Packaging Type not found'}), 404
+
+
+@app.route('/packaging_types', methods=['GET'])
+def get_all_packaging_types():
+    packaging_types = PackagingTypeService.get_all_packaging_types()
+    return jsonify([pt.to_dict() for pt in packaging_types])
+
+
+@app.route('/packaging_types/<int:packaging_type_id>', methods=['PUT'])
+def update_packaging_type(packaging_type_id):
+    data = request.json
+    type = data.get('type')
+    size = data.get('size')
+    weight = data.get('weight')
+    updated_packaging_type = PackagingTypeService.update_packaging_type(packaging_type_id, type, size, weight)
+    if updated_packaging_type:
+        return jsonify(updated_packaging_type.to_dict())
+    return jsonify({'message': 'Packaging Type not found'}), 404
+
+
+@app.route('/packaging_types/<int:packaging_type_id>', methods=['DELETE'])
+def delete_packaging_type(packaging_type_id):
+    deleted_packaging_type = PackagingTypeService.delete_packaging_type(packaging_type_id)
+    if deleted_packaging_type:
+        return jsonify(deleted_packaging_type.to_dict())
+    return jsonify({'message': 'Packaging Type not found'}), 404
+
+
+# Segement ***************************************************
+
+@app.route('/segments', methods=['GET'])
+def get_segments():
+    segments = SegmentService.get_all_segments()
+    return jsonify([segment.to_dict() for segment in segments])
+
+
+@app.route('/segments/<int:segment_id>', methods=['GET'])
+def get_segment(segment_id):
+    segment = SegmentService.get_segment_by_id(segment_id)
+    if segment:
+        return jsonify(segment.to_dict())
+    return jsonify({'message': 'Segment not found'}), 404
+
+
+@app.route('/segments', methods=['POST'])
+def create_segment():
+    data = request.get_json()
+    name = data.get('name')
+    project_id = data.get('project_id')
+    sum_of_hc_of_lines = data.get('sum_of_hc_of_lines')
+    new_segment = SegmentService.create_segment(name, project_id, sum_of_hc_of_lines)
+    return jsonify(new_segment.to_dict()), 201
+
+
+@app.route('/segments/<int:segment_id>', methods=['PUT'])
+def update_segment(segment_id):
+    data = request.get_json()
+    name = data.get('name')
+    project_id = data.get('project_id')
+    sum_of_hc_of_lines = data.get('sum_of_hc_of_lines')
+    updated_segment = SegmentService.update_segment(segment_id, name, project_id, sum_of_hc_of_lines)
+    if updated_segment:
+        return jsonify(updated_segment.to_dict())
+    return jsonify({'message': 'Segment not found'}), 404
+
+
+@app.route('/segments/<int:segment_id>', methods=['DELETE'])
+def delete_segment(segment_id):
+    result = SegmentService.delete_segment(segment_id)
+    if result:
+        return jsonify({'message': 'Segment deleted successfully'})
+    return jsonify({'message': 'Segment not found'}), 404
+
+
+# group Routes *********************************
+
+@app.route('/groups', methods=['POST'])
+def create_group():
+    data = request.json
+    name = data.get('name')
+    production_line = data.get('production_line')
+
+    group = GroupService.create(name, production_line)
+    return jsonify({'message': 'Group created successfully', 'group': group.to_dict()}), 201
+
+
+@app.route('/groups', methods=['GET'])
+def get_all_groups():
+    groups = GroupService.get_all()
+    return jsonify([group.to_dict() for group in groups]), 200
+
+
+@app.route('/groups/<int:group_id>', methods=['GET'])
+def get_group(group_id):
+    group = GroupService.get_by_id(group_id)
+    if group:
+        return jsonify(group.to_dict()), 200
+    return jsonify({'error': 'Group not found'}), 404
+
+
+@app.route('/groups/<int:group_id>', methods=['PUT'])
+def update_group(group_id):
+    data = request.json
+    name = data.get('name')
+    production_line = data.get('production_line')
+
+    group = GroupService.update(group_id, name, production_line)
+    if group:
+        return jsonify(group.to_dict()), 200
+    return jsonify({'error': 'Group not found'}), 404
+
+
+@app.route('/groups/<int:group_id>', methods=['DELETE'])
+def delete_group(group_id):
+    success = GroupService.delete(group_id)
+    if success:
+        return jsonify({'message': 'Group deleted successfully'}), 200
+    return jsonify({'error': 'Group not found'}), 404
+
+
+@app.route('/users/<int:user_id>/assign_group', methods=['PUT'])
+def assign_group(user_id):
+    data = request.json
+    group_id = data.get('group_id')
+
+    user = UserService.assign_group(user_id, group_id)
+    if user:
+        return jsonify(user.to_dict()), 200
+    return jsonify({'error': 'User or Group not found'}), 404
 
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000)
+    app.run(port=5000, debug=True)

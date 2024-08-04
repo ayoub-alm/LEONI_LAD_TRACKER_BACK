@@ -1,38 +1,44 @@
-from flask import jsonify
+from datetime import datetime
 
+from flask import jsonify
 from database import db
+from models.packaging_box import PackagingBox
 from models.prod_harness import ProdHarness
 from services.production_job_service import ProductionJobService
 
 
 class ProdHarnessService:
     @staticmethod
-    def create(uuid, box_number, range_time, production_job_id):
-        prod_harness = ProdHarness(uuid=uuid, box_number=box_number, range_time=range_time,
-                                   production_job_id=production_job_id)
-        # update the delivered quantity in production job
-        production_job = ProductionJobService.get_by_id(production_job_id)
-        status = 0
-        delivered_quantity = production_job.delivered_quantity + 1
-        if delivered_quantity < production_job.demanded_quantity:
-            ProductionJobService.update(production_job_id, None, None, None, None,
-                                        production_job.delivered_quantity + 1, status)
-
-        if delivered_quantity == production_job.demanded_quantity:
-            status = 1
-            ProductionJobService.update(production_job_id, None, None, None, None,
-                                        production_job.delivered_quantity + 1, status)
-
-        db.session.add(prod_harness)
-        db.session.commit()
-        return prod_harness
+    def create(uuid, box_number, range_time, production_job_id, status=0, packaging_box_id=None):
+        try:
+            prod_harness = ProdHarness(
+                uuid=uuid,
+                box_number=box_number,
+                range_time=range_time,
+                production_job_id=production_job_id,
+                status=status,
+                packaging_box_id=packaging_box_id
+            )
+            db.session.add(prod_harness)
+            if packaging_box_id:
+                packaging_box = PackagingBox.query.filter_by(id=packaging_box_id).first()
+                if packaging_box:
+                    packaging_box.delivered_quantity += 1
+                    if packaging_box.to_be_delivered_quantity == packaging_box.delivered_quantity:
+                        packaging_box.status = 2
+            db.session.commit()
+            return prod_harness
+        except Exception as e:
+            db.session.rollback()
+            raise e
 
     @staticmethod
     def get_by_id(prod_harness_id):
         return ProdHarness.query.get(prod_harness_id)
 
     @staticmethod
-    def update(prod_harness_id, uuid=None, box_number=None, range_time=None, production_job_id=None):
+    def update(prod_harness_id, uuid=None, box_number=None, range_time=None, production_job_id=None, status=None,
+               packaging_box_id=None):
         try:
             prod_harness = ProdHarnessService.get_by_id(prod_harness_id)
             if prod_harness:
@@ -42,8 +48,17 @@ class ProdHarnessService:
                     prod_harness.box_number = box_number
                 if range_time is not None:
                     prod_harness.range_time = range_time
+                else:
+                    created_at = prod_harness.created_at
+                    now = datetime.utcnow()
+                    range_time = (now - created_at).total_seconds() / 60
+                    prod_harness.range_time = range_time
                 if production_job_id is not None:
                     prod_harness.production_job_id = production_job_id
+                if status is not None:
+                    prod_harness.status = status
+                if packaging_box_id is not None:
+                    prod_harness.packaging_box_id = packaging_box_id
 
                 db.session.commit()
                 return prod_harness
@@ -69,10 +84,8 @@ class ProdHarnessService:
 
     @staticmethod
     def get_all():
-        harnesses = ProdHarness.query.all()
-        return harnesses
+        return ProdHarness.query.all()
 
     @staticmethod
     def get_by_uuid(uuid):
-        harnesses = ProdHarness.query.filter_by(uuid=uuid).first()
-        return harnesses
+        return ProdHarness.query.filter_by(uuid=uuid).first()

@@ -1,43 +1,48 @@
 from sqlalchemy import func
-
 from database import db
 from models.harness import HarnessModel
-
 
 class HarnessService:
 
     @staticmethod
-    def create(ref, fase_iso, family, range_time, project_id):
+    def create(ref, cpn, fuse_box, range_time, package_type_id, segment_id):
         try:
-            harness = HarnessModel(ref=ref, fase_iso=fase_iso, family=family, range_time=range_time,
-                                   project_id=project_id)
+            harness = HarnessModel(
+                ref=ref,
+                cpn=cpn,
+                fuse_box=fuse_box,
+                range_time=range_time,
+                package_type_id=package_type_id,
+                segment_id=segment_id
+            )
             db.session.add(harness)
             db.session.commit()
             return harness
         except Exception as e:
             db.session.rollback()
             raise e
-            return 'error'
 
     @staticmethod
     def get_by_id(harness_id):
         return HarnessModel.query.get(harness_id)
 
     @staticmethod
-    def update(harness_id, ref=None, fase_iso=None, family=None, range_time=None, project_id=None):
+    def update(harness_id, ref=None, cpn=None, fuse_box=None, range_time=None, package_type_id=None, segment_id=None):
         try:
             harness = HarnessService.get_by_id(harness_id)
             if harness:
                 if ref is not None:
                     harness.ref = ref
-                if fase_iso is not None:
-                    harness.fuse_box = fase_iso
-                if family is not None:
-                    harness.family = family
+                if cpn is not None:
+                    harness.cpn = cpn
+                if fuse_box is not None:
+                    harness.fuse_box = fuse_box
                 if range_time is not None:
                     harness.range_time = range_time
-                if project_id is not None:
-                    harness.project_id = project_id
+                if package_type_id is not None:
+                    harness.package_type_id = package_type_id
+                if segment_id is not None:
+                    harness.segment_id = segment_id
 
                 db.session.commit()
                 return harness
@@ -67,7 +72,7 @@ class HarnessService:
 
     @staticmethod
     def get_families():
-        return db.session.query(HarnessModel.id, HarnessModel.family, func.count()).group_by(HarnessModel.family).all()
+        return db.session.query(HarnessModel.family, func.count()).group_by(HarnessModel.family).all()
 
     @staticmethod
     def get_by_ref(ref):

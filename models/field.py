@@ -5,9 +5,10 @@ from models.base_model import BaseModel
 
 
 class Field(BaseModel, db.Model):
+    __tablename__ = 'fields'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50))
-    post_id = db.Column(db.Integer, db.ForeignKey('post.id'))
+    post_id = db.Column(db.Integer, db.ForeignKey('posts.id'))
 
     def __init__(self, id, name ) -> None:
         super().__init__()

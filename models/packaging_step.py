@@ -2,12 +2,13 @@ from database import db
 from models.base_model import BaseModel
 
 class PackagingStep(BaseModel, db.Model):
+    __tablename__ = 'packaging_steps'
     id = db.Column(db.Integer, primary_key=True)
     pre_fix = db.Column(db.String(50))
-    field_id = db.Column(db.Integer, db.ForeignKey('field.id'))  # Define the foreign key
+    field_id = db.Column(db.Integer, db.ForeignKey('fields.id'))  # Define the foreign key
     status = db.Column(db.Integer, default=0)
     description = db.Column(db.String(150), nullable=True)
-    packaging_process_id = db.Column(db.Integer, db.ForeignKey('packaging_process.id'))
+    packaging_process_id = db.Column(db.Integer, db.ForeignKey('packaging_processes.id'))
     img = db.Column(db.Text, nullable=True)
     order = db.Column(db.Integer)
     name = db.Column(db.String(100), default="")
