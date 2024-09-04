@@ -8,7 +8,7 @@ from models.packaging_box import PackagingBox  # Assuming this model exists
 class ProdHarness(BaseModel, db.Model):
     __tablename__ = 'prod_harnesses'
     id = db.Column(db.Integer, primary_key=True)
-    uuid = db.Column(db.String(50))
+    uuid = db.Column(db.String(50), unique=True)
     box_number = db.Column(db.String(50), nullable=True)
     range_time = db.Column(db.Float, nullable=True)
     production_job_id = db.Column(db.Integer, db.ForeignKey('production_jobs.id'), nullable=True)
@@ -35,5 +35,6 @@ class ProdHarness(BaseModel, db.Model):
             'range_time': self.range_time,
             'production_job': self.production_job.to_dict() if self.production_job else None,
             'status': self.status,
-            'packaging_box_id': self.packaging_box_id
+            'packaging_box_id': self.packaging_box_id,
+            'created_at': self.created_at
         }

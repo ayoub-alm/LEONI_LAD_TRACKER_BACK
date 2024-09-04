@@ -10,7 +10,7 @@ class PackagingBox(BaseModel, db.Model):
     delivered_quantity = db.Column(db.Integer, default=0)
     harness_id = db.Column(db.Integer , db.ForeignKey('harnesses.id'), nullable=True)
     status = db.Column(db.String(50))
-    barcode = db.Column(db.String(100))
+    barcode = db.Column(db.String(100), unique=True)
 
     line = db.relationship('ProductionLine', back_populates='packaging_boxes')
     prod_harness = db.relationship('ProdHarness', back_populates='packaging_box', lazy='dynamic')

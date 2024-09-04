@@ -1,6 +1,5 @@
 from database import db
 from models.base_model import BaseModel
-from models.project import Project
 
 
 class ProductionLine(BaseModel, db.Model):
@@ -12,19 +11,17 @@ class ProductionLine(BaseModel, db.Model):
     packaging_boxes = db.relationship('PackagingBox', back_populates='line', lazy='dynamic')
     groups = db.relationship('Group', back_populates='production_line', lazy='dynamic')
 
-    def __init__(self, id, name, number_of_operators, project_id):
+    def __init__(self, id, name, number_of_operators, segment_id):
         super().__init__()
         self.id = id,
         self.name = name
         self.number_of_operators = number_of_operators
-        # self.project_id = project_id
+        self.segment_id = segment_id
 
     def to_dict(self):
-        # project = Project.query.get(self.project_id)
         return {
             'id': self.id,
             'name': self.name,
-            # 'project_id': self.project_id,
-            # 'project': project.name,
             'number_of_operators': self.number_of_operators,
+            'segment_id': self.segment_id
         }

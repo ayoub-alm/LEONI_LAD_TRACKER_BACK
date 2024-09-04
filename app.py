@@ -36,9 +36,6 @@ db.configure_mappers()
 with app.app_context():
     db.create_all()
 
-
-
-
 # Register the blueprint
 app.register_blueprint(line_dashboard_bp)
 # Register the global dashboard Lines
@@ -242,9 +239,9 @@ def create_production_harness():
     production_harness = ProdHarnessService.create(uuid, box_number, range_time, production_job_id, status,
                                                    packaging_box_id)
     if production_harness:
-        return jsonify(production_harness.to_dict()), 201
+        return jsonify({"response": True}), 201
     else:
-        return jsonify({'error': 'Failed to create production harness'}), 400
+        return jsonify({"response": False}), 400
 
 
 @app.route('/prod-harness/<int:prod_harness_id>', methods=['PUT'])

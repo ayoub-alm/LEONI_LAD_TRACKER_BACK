@@ -60,7 +60,19 @@ def apply_filters(query, filters):
 def total_quantity():
     try:
         filters = request.json
-        query = db.session.query(db.func.sum(PackagingBox.delivered_quantity).label('total_quantity'))
+        query = db.session.query(db.func.sum(PackagingBox.delivered_quantity).label('total_quantity')).filter(PackagingBox.status == 2)
+        query = apply_filters(query, filters)
+        result = query.one()
+        return jsonify({'total_quantity': result.total_quantity})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@line_dashboard_bp.route('/api/line-dashboard/in-progress-quantity', methods=['POST'])
+def get_in_progress_quantity():
+    try:
+        filters = request.json
+        query = db.session.query(db.func.sum(PackagingBox.delivered_quantity).label('total_quantity')).filter(PackagingBox.status == 0)
         query = apply_filters(query, filters)
         result = query.one()
         return jsonify({'total_quantity': result.total_quantity})
@@ -150,7 +162,7 @@ def productive_hours():
         query = apply_filters(query, filters)
         result = query.one()
 
-        if len(result) < 1 :
+        if len(result) < 1:
             total_quantity = result.total_quantity or 0
             efficiency = (total_quantity * temps_game) / (vsm * total_time) * 100 if total_time > 0 else 0
             expected = (vsm * total_time) / temps_game if temps_game > 0 else 0
@@ -190,7 +202,8 @@ def sum_by_code_fournisseur():
         ).group_by(PackagingBox.harness_id)
         query = apply_filters(query, filters)
         result = query.all()
-        data = [{'code_fournisseur': row.PackagingBox.harness.ref, 'total_quantity': row.total_quantity} for row in result]
+        data = [{'code_fournisseur': row.PackagingBox.harness.ref, 'total_quantity': row.total_quantity} for row in
+                result]
         return jsonify(data)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
