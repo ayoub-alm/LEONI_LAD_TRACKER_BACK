@@ -2,6 +2,7 @@
 from models.packaging_type import PackagingType
 from database import db
 
+
 class PackagingTypeService:
     @staticmethod
     def create_packaging_type(type, size, weight):

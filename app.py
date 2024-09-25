@@ -620,9 +620,18 @@ def update_packaging_box(box_id):
 
 @app.route('/packaging_box/<int:box_id>', methods=['DELETE'])
 def delete_packaging_box(box_id):
-    packaging_box = PackagingBoxService.delete_packaging_box(box_id)
+    packaging_box = PackagingBoxService.get_packaging_box_by_id(box_id)
+
     if packaging_box:
-        return jsonify(packaging_box.to_dict())
+        # Pre-fetch the packaging box data as a dictionary before deletion
+        packaging_box_data = packaging_box.to_dict()
+
+        # Call the service to delete the packaging box
+        PackagingBoxService.delete_packaging_box(box_id)
+
+        # Return the pre-fetched data
+        return jsonify(packaging_box_data), 200
+
     return jsonify({'message': 'Packaging box not found'}), 404
 
 

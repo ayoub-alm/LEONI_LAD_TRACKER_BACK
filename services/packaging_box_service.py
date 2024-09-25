@@ -1,5 +1,9 @@
+from flask import jsonify
+
 from models.packaging_box import PackagingBox
 from database import db
+from models.prod_harness import ProdHarness
+
 
 class PackagingBoxService:
     @staticmethod
@@ -39,10 +43,29 @@ class PackagingBoxService:
     @staticmethod
     def delete_packaging_box(box_id):
         packaging_box = PackagingBoxService.get_packaging_box_by_id(box_id)
+
         if packaging_box:
+            # Access related objects before deleting to prevent DetachedInstanceError
+            packaging_box_dict = packaging_box.to_dict()  # Fetch all the data before deletion
+
+            # Delete all related harnesses
+            for harness in packaging_box.prod_harness:
+                db.session.delete(harness)
+
+            # Delete the packaging box itself
             db.session.delete(packaging_box)
-            db.session.commit()
-        return packaging_box
+
+            try:
+                # Commit the transaction
+                db.session.commit()
+            except Exception as e:
+                db.session.rollback()  # Rollback in case of error
+                raise RuntimeError(f"Error deleting packaging box {box_id}: {str(e)}")
+
+            # Return the dictionary containing the data of the deleted packaging box
+            return jsonify(packaging_box_dict)
+
+        return jsonify({'error': 'Packaging box not found'}), 404
 
     @staticmethod
     def get_all_packaging_boxes():

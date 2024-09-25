@@ -78,16 +78,32 @@ class PackagingStepService:
             return None
 
     @staticmethod
+    def save_image(base64_image: str, filename: str) -> str:
+        # Decode the base64 image
+        header, base64_data = base64_image.split(',', 1)
+        image_data = base64.b64decode(base64_data)
+
+        # Save the image to a file
+        img_folder = os.path.join(os.getcwd(), 'static', 'images')
+        os.makedirs(img_folder, exist_ok=True)
+        img_path = os.path.join(img_folder, filename)
+
+        with open(img_path, 'wb') as f:
+            f.write(image_data)
+
+        # Return the relative path to the image
+        return f"http://localhost:5000/static/images/{filename}"
+
+    @staticmethod
     def create_bulk_packaging_steps(steps: List[dict]):
         step_objects = []
 
         for step_data in steps:
-            # Save the image if it exists
             img_path = None
             if 'img' in step_data and step_data['img']:
                 base64_image = step_data['img']
-                # Generate a secure filename
-                filename = secure_filename(f"{step_data.get('name', 'image')}")
+                filename = secure_filename(
+                    f"{step_data.get('name', 'image')}.png")  # Assuming .png format for the image
                 img_path = PackagingStepService.save_image(base64_image, filename)
 
             step = PackagingStep(
